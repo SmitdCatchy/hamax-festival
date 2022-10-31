@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import AmmoModule  from 'ammojs-typed';
 
 @Component({
   selector: 'smitd-root',
@@ -6,5 +7,6 @@ import { Component } from '@angular/core';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent {
-  title = 'smitd-game-poc';
+
+  constructor() {}
 }

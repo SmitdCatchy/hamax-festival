@@ -1,9 +1,72 @@
+@use '@angular/material' as mat;
 @import 'colors';
+@import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@300;400;700;900&display=swap');
+
+$main-typography: mat.define-typography-config(
+  $font-family: 'Inconsolata'
+);
+@include mat.core($main-typography);
+
+@function createPalette($base-color, $font-primary, $font-secondary) {
+  @return
+    (
+      50: lighten($base-color, 30%),
+      100: lighten($base-color, 30%),
+      200: lighten($base-color, 20%),
+      300: lighten($base-color, 10%),
+      400: $base-color,
+      500: $base-color,
+      600: darken($base-color, 10%),
+      700: darken($base-color, 20%),
+      800: darken($base-color, 30%),
+      900: darken($base-color, 30%),
+      contrast: (
+        50: $font-secondary,
+        100: $font-secondary,
+        200: $font-secondary,
+        300: $font-primary,
+        400: $font-primary,
+        500: $font-primary,
+        600: $font-primary,
+        700: $font-primary,
+        800: $font-primary,
+        900: $font-primary,
+      )
+    )
+  ;
+}
+
+$smitd-game-poc-primary: mat.define-palette(createPalette($turquoise,$black,$white));
+$smitd-game-poc-accent: mat.define-palette(createPalette($orange,$black,$white));
+$smitd-game-poc-warn: mat.define-palette(createPalette($warn,$black,$white));
+
+$theme-light: mat.define-light-theme(
+  (
+    color: (
+      primary: $smitd-game-poc-primary,
+      accent: $smitd-game-poc-accent,
+      warn: $smitd-game-poc-warn
+    )
+  )
+);
+
+$theme-dark: mat.define-dark-theme(
+  (
+    color: (
+      primary: $smitd-game-poc-primary,
+      accent: $smitd-game-poc-accent,
+      warn: $smitd-game-poc-warn
+    )
+  )
+);
+
+@include mat.all-component-themes($theme-light);
 
 html,
 body {
   margin: 0;
-  background-color: $black;
   height: 100vh;
   overflow: hidden;
+  background-color: $black;
+  color: $white;
 }

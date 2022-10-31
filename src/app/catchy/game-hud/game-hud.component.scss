@@ -1,0 +1,31 @@
+@import 'colors';
+
+:host {
+  display: contents;
+}
+
+.top {
+  position: fixed;
+  z-index: 10;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background-color: $earth;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bottom {
+  position: fixed;
+  z-index: 10;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background-color: $earth;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
