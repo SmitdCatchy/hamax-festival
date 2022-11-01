@@ -44,6 +44,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass';
 import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass';
 import { PixelShader } from 'three/examples/jsm/shaders/PixelShader';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader';
+import { MapGeneratorService } from '../services/map-generator.service';
 
 export enum STATE {
   ACTIVE = 1,
@@ -141,7 +142,8 @@ export class GameScreenComponent implements AfterViewInit {
     private readonly soundService: SoundService,
     private readonly coreService: CoreService,
     private ammoService: AmmoService,
-    private element: ElementRef
+    private element: ElementRef,
+    private mapGenerator: MapGeneratorService
   ) {
     this.characters = [];
   }
@@ -279,7 +281,22 @@ export class GameScreenComponent implements AfterViewInit {
   }
 
   private setupWorld(): void {
-    this.createPlane(
+    this.mapGenerator.init(this.scene, {
+      Ammo: this.Ammo,
+      physicsWorld: this.physicsWorld,
+      rigidBodies: this.rigidBodies,
+      tmpTrans: this.tmpTrans,
+      tmpVec: this.tmpVec
+    }, {
+      gravity: this.gravity,
+      friction: this.friction,
+      rollingFriction: this.rollingFriction,
+      colGroupBall: this.colGroupBall,
+      colGroupPlane: this.colGroupPlane,
+      colGroupPlayer: this.colGroupPlayer
+    });
+    this.mapGenerator.generateMap();
+    /*this.createPlane(
       new Vector3(this.mapSize.width + 1400, 2, this.mapSize.height + 1000),
       new Vector3(0, -2, 0),
       0x444444
@@ -288,7 +305,7 @@ export class GameScreenComponent implements AfterViewInit {
       new Vector3(this.mapSize.width, 2, this.mapSize.height),
       new Vector3(0, -1, 0),
       0x66aa66
-    );
+    );*/
     // this.createPlane(new Vector3(10, 10, 10), new Vector3(0, 5, 0), 0x00ff00);
     this.createCharacter(4, 10, new Vector3(-10, 40, 0), 0x333333, 3);
     this.createBungalo();
