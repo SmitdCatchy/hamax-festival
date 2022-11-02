@@ -2,7 +2,8 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
-  HostListener
+  HostListener,
+  OnDestroy
 } from '@angular/core';
 import cloneDeep from 'lodash.clonedeep';
 import { Character } from 'src/app/core/models/character.model';
@@ -44,6 +45,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass';
 import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass';
 import { PixelShader } from 'three/examples/jsm/shaders/PixelShader';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader';
+import { SocketService } from '../services/socket.service';
 
 export enum STATE {
   ACTIVE = 1,
@@ -67,7 +69,7 @@ export interface PlayerMovement {
   templateUrl: './game-screen.component.html',
   styleUrls: ['./game-screen.component.scss']
 })
-export class GameScreenComponent implements AfterViewInit {
+export class GameScreenComponent implements AfterViewInit, OnDestroy {
   private scene!: Scene;
   private camera!: PerspectiveCamera;
   private renderer!: WebGLRenderer;
@@ -79,6 +81,7 @@ export class GameScreenComponent implements AfterViewInit {
   private clock!: Clock;
   private rigidBodies: any = [];
   private characters: Character[];
+  private players: Character[];
 
   private cameraMovement: {
     distance: number;
@@ -140,10 +143,13 @@ export class GameScreenComponent implements AfterViewInit {
   constructor(
     private readonly soundService: SoundService,
     private readonly coreService: CoreService,
+    private readonly socketService: SocketService,
     private ammoService: AmmoService,
     private element: ElementRef
   ) {
     this.characters = [];
+    this.players = [];
+    this.socketService.initializePeer();
   }
 
   public ngAfterViewInit(): void {
@@ -153,8 +159,61 @@ export class GameScreenComponent implements AfterViewInit {
       this.tmpTrans = new this.Ammo.btTransform();
       this.init();
       this.update();
+      this.socketService.playerAction.subscribe((action) => {
+        switch (action.changed) {
+          case 'spawn':
+            this.createPlayer(4, 10, action.pos, action.color);
+            break;
+          case 'joined':
+            this.socketService.stateChange({
+              changed: 'spawn',
+              pos: this.character.model.position,
+              color: this.character.info.color
+            });
+            break;
+          case 'action':
+            console.log('RECIEVED ACTION', action);
+            switch (action.action.type) {
+              case 'move':
+                this.players[0].info.move = true;
+                this.players[0].info.targetPosition = action.action.targetPosition;
+                break;
+
+              default:
+                break;
+            }
+            break;
+          default:
+            break;
+        }
+      });
     });
   }
+
+  public get myPeerId(): string {
+    return this.socketService.peerId;
+  }
+
+  public connectToHost(peerId: string): void {
+    this.socketService.connectPeer(peerId, () => {
+      this.socketService.stateChange({
+        changed: 'spawn',
+        pos: this.character.model.position,
+        color: this.character.info.color
+      });
+    });
+  }
+
+  public sendAction(action: any): void {
+    console.log('action', action);
+
+    this.socketService.stateChange({
+      changed: 'action',
+      action
+    });
+  }
+
+  public ngOnDestroy(): void {}
 
   private init(): void {
     this.setupPhysicsWorld();
@@ -290,7 +349,13 @@ export class GameScreenComponent implements AfterViewInit {
       0x66aa66
     );
     // this.createPlane(new Vector3(10, 10, 10), new Vector3(0, 5, 0), 0x00ff00);
-    this.createCharacter(4, 10, new Vector3(-10, 40, 0), 0x333333, 3);
+    this.createCharacter(
+      4,
+      10,
+      new Vector3(100 * Math.random() - 50, 20, 100 * Math.random() - 50),
+      0xffffff * Math.random(),
+      3
+    );
     this.createBungalo();
     this.createSign();
     this.createUnitCube(new Vector3(10, 0, 0));
@@ -575,7 +640,9 @@ export class GameScreenComponent implements AfterViewInit {
       body,
       {
         animationState: 'idle',
-        info: {}
+        info: {
+          color
+        }
       },
       'Character'
     );
@@ -583,6 +650,78 @@ export class GameScreenComponent implements AfterViewInit {
     this.scene.add(newCharacter.model);
     this.characters.push(newCharacter);
     this.character = newCharacter;
+    // this.rigidBodies.push(newCharacter);
+  }
+
+  private createPlayer(
+    radius = 4,
+    height = 10,
+    pos: Vector3 = new Vector3(100, 5, 0),
+    color: number = 0x7a7a7a,
+    mass = 1
+  ): void {
+    const quat = { x: 0, y: 0, z: 0, w: 1 };
+
+    // Create Geometry
+    const cylinder = new Mesh(
+      new CylinderGeometry(radius, radius, height, 20, 20),
+      new MeshPhongMaterial({ color })
+    );
+    cylinder.position.set(pos.x, pos.y, pos.z);
+    cylinder.castShadow = true;
+    cylinder.receiveShadow = true;
+
+    // Create Collision Box
+    const transform = new this.Ammo.btTransform();
+    transform.setIdentity();
+    this.tmpVec.setValue(pos.x, pos.y, pos.z);
+    transform.setOrigin(this.tmpVec);
+    transform.setRotation(
+      new this.Ammo.btQuaternion(quat.x, quat.y, quat.z, quat.w)
+    );
+    const motionState = new this.Ammo.btDefaultMotionState(transform);
+
+    this.tmpVec.setValue(radius, height / 2, radius);
+    const colShape = new this.Ammo.btCylinderShape(this.tmpVec);
+    colShape.setMargin(0.05);
+    this.tmpVec.setValue(0, 0, 0);
+    const localInertia = this.tmpVec;
+    colShape.calculateLocalInertia(mass, localInertia);
+
+    const rbInfo = new this.Ammo.btRigidBodyConstructionInfo(
+      mass,
+      motionState,
+      colShape,
+      localInertia
+    );
+    const body: Ammo.btRigidBody = new this.Ammo.btRigidBody(rbInfo);
+
+    body.setFriction(this.friction);
+    body.setRollingFriction(this.rollingFriction);
+    body.setActivationState(STATE.DISABLE_DEACTIVATION);
+    this.tmpVec.setValue(0, 1, 0);
+    body.setAngularFactor(this.tmpVec);
+
+    this.physicsWorld.addRigidBody(
+      body,
+      this.colGroupBall,
+      this.colGroupBall | this.colGroupPlane
+    );
+
+    const newCharacter = new Character(
+      cylinder,
+      body,
+      {
+        animationState: 'idle',
+        info: {
+          color
+        }
+      },
+      'Character'
+    );
+
+    this.scene.add(newCharacter.model);
+    this.players.push(newCharacter);
     // this.rigidBodies.push(newCharacter);
   }
 
@@ -599,6 +738,10 @@ export class GameScreenComponent implements AfterViewInit {
       new BoxBufferGeometry(1, 1, 1),
       new MeshPhongMaterial({ color: color })
     );
+    const texture = new TextureLoader().load(
+      'assets/textures/placeholder_64.png'
+    );
+    blockPlane.material.map = texture;
 
     blockPlane.position.set(pos.x, pos.y, pos.z);
     blockPlane.scale.set(scale.x, scale.y, scale.z);
@@ -744,6 +887,9 @@ export class GameScreenComponent implements AfterViewInit {
   private update(): void {
     const deltaTime = this.clock.getDelta();
     this.moveCharacter(this.character);
+    if(this.players[0]) {
+      this.moveCharacter(this.players[0]);
+    }
     this.updatePhysics(deltaTime);
     this.updateCamera();
     this.scene.traverse((object) => {
@@ -845,6 +991,21 @@ export class GameScreenComponent implements AfterViewInit {
 
     for (let index = 0; index < this.characters.length; index++) {
       const character = this.characters[index];
+      const objThree = character.model;
+      const objAmmo = character.physicsBody;
+      const ms = objAmmo.getMotionState();
+
+      if (ms) {
+        ms.getWorldTransform(this.tmpTrans);
+        const p = this.tmpTrans.getOrigin();
+        const q = this.tmpTrans.getRotation();
+        objThree.position.set(p.x(), p.y(), p.z());
+        objThree.quaternion.set(q.x(), q.y(), q.z(), q.w());
+      }
+    }
+
+    for (let index = 0; index < this.players.length; index++) {
+      const character = this.players[index];
       const objThree = character.model;
       const objAmmo = character.physicsBody;
       const ms = objAmmo.getMotionState();
@@ -983,6 +1144,11 @@ export class GameScreenComponent implements AfterViewInit {
     character.info = character.info || {};
     character.info.move = true;
     character.info.targetPosition = { x: position.x, z: position.z };
+
+    this.sendAction({
+      type: 'move',
+      targetPosition : { x: position.x, z: position.z }
+    });
     character.info.moveAcceptanceRange = moveAcceptanceRange;
   }
 
@@ -1241,10 +1407,10 @@ export class GameScreenComponent implements AfterViewInit {
           this.outlinePass.selectedObjects = [];
         }
         break;
-      case 'Control':
-        event.preventDefault();
-        this.pixelate = !this.pixelate;
-        break;
+      // case 'Control':
+      //   event.preventDefault();
+      //   this.pixelate = !this.pixelate;
+      //   break;
       case 'Tab':
         event.preventDefault();
         this.cameraMovement.distance = 140;

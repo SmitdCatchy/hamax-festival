@@ -5,3 +5,18 @@
   right: 0;
   bottom: 80px;
 }
+
+.peer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  p {
+    margin: 0;
+  }
+}
+.select-all-text {
+  user-select: all;
+  -moz-user-select: all;
+  -webkit-user-select: all;
+}

@@ -1,8 +1,14 @@
 <smitd-game-hud>
   <ng-container top>
       <h2>
-        Catchy Version
+        Catchy Version <span>{{'lang' | translate}}</span>
       </h2>
+      <div class="peer">
+        <p>peerID: <span class="select-all-text">{{myPeerId}}</span></p>
+        <span>|</span>
+        <input type="text" #hostPeerId>
+        <button mat-raised-button smitd-click-sound color="primary" (click)="connectToHost(hostPeerId.value)">join</button>
+      </div>
   </ng-container>
   <ng-container bottom>
     <button mat-raised-button smitd-click-sound color="primary">bottom</button>

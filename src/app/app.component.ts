@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
-import AmmoModule  from 'ammojs-typed';
+import { CoreService } from './core/services/core.service';
+import { TranslationService } from './core/services/translation.service';
 
 @Component({
   selector: 'smitd-root',
@@ -7,6 +8,8 @@ import AmmoModule  from 'ammojs-typed';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent {
-
-  constructor() {}
+  constructor(
+    private readonly core: CoreService,
+    private readonly translationService: TranslationService
+  ) {}
 }

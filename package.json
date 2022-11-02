@@ -6,7 +6,8 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "deploy": "ng build && sh ./deploy.sh"
   },
   "private": true,
   "dependencies": {
@@ -20,10 +21,13 @@
     "@angular/platform-browser": "~13.3.0",
     "@angular/platform-browser-dynamic": "~13.3.0",
     "@angular/router": "~13.3.0",
+    "@ngx-translate/core": "^14.0.0",
+    "@ngx-translate/http-loader": "^7.0.0",
     "@three-ts/orbit-controls": "^1.4.7",
     "@types/three": "^0.140.0",
     "ammojs-typed": "^1.0.6",
     "lodash.clonedeep": "^4.5.0",
+    "peerjs": "^1.4.7",
     "rxjs": "~7.5.0",
     "stats-js": "^1.0.1",
     "three": "^0.140.0",
